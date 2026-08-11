@@ -2,7 +2,7 @@ import { Outlet, Navigate, Link } from 'react-router-dom';
 import { useContext, useState } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import api from '../services/api';
-import { Shield, FileText, MessageSquare, Users, Settings, LogOut, LayoutDashboard, Activity, KeyRound, X } from 'lucide-react';
+import { Shield, FileText, MessageSquare, Users, Settings, LogOut, LayoutDashboard, Activity, KeyRound, X, Layers } from 'lucide-react';
 
 const MainLayout = () => {
   const { user, logout } = useContext(AuthContext);
@@ -53,6 +53,10 @@ const MainLayout = () => {
               <Link to="/users" className="flex items-center gap-3 p-3 rounded-lg hover:bg-indigo-800 transition">
                 <Users className="w-5 h-5 text-indigo-300" />
                 <span>Users</span>
+              </Link>
+              <Link to="/tiers" className="flex items-center gap-3 p-3 rounded-lg hover:bg-indigo-800 transition">
+                <Layers className="w-5 h-5 text-indigo-300" />
+                <span>Tiers</span>
               </Link>
               <Link to="/system" className="flex items-center gap-3 p-3 rounded-lg hover:bg-indigo-800 transition">
                 <Activity className="w-5 h-5 text-indigo-300" />

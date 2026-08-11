@@ -72,3 +72,22 @@ def update_user_status(user_id: int, is_active: bool, current_user: User = Depen
     log_action(db, "USER_STATUS_CHANGED", current_user.id, "USER", str(user.id), {"is_active": is_active})
     
     return user
+
+@router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_user(user_id: int, current_user: User = Depends(require_admin), db: Session = Depends(get_db)):
+    if user_id == current_user.id:
+        raise HTTPException(status_code=400, detail="Cannot delete yourself")
+        
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    try:
+        db.delete(user)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Cannot delete user. Ensure all related records (like CVs) are deleted first.")
+        
+    log_action(db, "USER_DELETED", current_user.id, "USER", str(user_id), {"email": user.email})
+    return None

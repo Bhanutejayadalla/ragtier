@@ -4,18 +4,32 @@ import type { CV } from '../types';
 import api from '../services/api';
 import { FileUp, FileText, Download, Trash2, Search } from 'lucide-react';
 
+interface Tier {
+  id: number;
+  name: string;
+  level: number;
+}
+
 const CVLibrary = () => {
   const { user } = useContext(AuthContext);
   const [cvs, setCvs] = useState<CV[]>([]);
+  const [tiers, setTiers] = useState<Tier[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
-  const [tier, setTier] = useState('TIER_3');
+  const [tier, setTier] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const fetchCvs = async () => {
+  const fetchData = async () => {
     try {
-      const res = await api.get('/cvs');
-      setCvs(res.data);
+      const cvsRes = await api.get('/cvs');
+      setCvs(cvsRes.data);
+      if (user?.role === 'ADMIN') {
+        const tiersRes = await api.get('/admin/tiers');
+        setTiers(tiersRes.data);
+        if (tiersRes.data.length > 0) {
+          setTier(tiersRes.data[0].name);
+        }
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -24,8 +38,8 @@ const CVLibrary = () => {
   };
 
   useEffect(() => {
-    fetchCvs();
-  }, []);
+    fetchData();
+  }, [user]);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -42,7 +56,7 @@ const CVLibrary = () => {
       await api.post('/cvs/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      fetchCvs();
+      fetchData();
     } catch (err) {
       alert('Upload failed. ' + (err as any).response?.data?.detail);
     } finally {
@@ -65,9 +79,9 @@ const CVLibrary = () => {
               onChange={(e) => setTier(e.target.value)}
               className="rounded-lg border-gray-300 text-sm focus:ring-indigo-500 focus:border-indigo-500"
             >
-              <option value="TIER_1">Tier 1</option>
-              <option value="TIER_2">Tier 2</option>
-              <option value="TIER_3">Tier 3</option>
+              {tiers.map(t => (
+                <option key={t.id} value={t.name}>{t.name}</option>
+              ))}
             </select>
           )}
           <input
@@ -133,10 +147,7 @@ const CVLibrary = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                        ${cv.tier === 'TIER_1' ? 'bg-red-100 text-red-800' : 
-                          cv.tier === 'TIER_2' ? 'bg-yellow-100 text-yellow-800' : 
-                          'bg-green-100 text-green-800'}`}>
+                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-indigo-100 text-indigo-800">
                         {cv.tier}
                       </span>
                     </td>

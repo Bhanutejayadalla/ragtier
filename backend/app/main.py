@@ -3,9 +3,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.database.connection import engine
 from app.database.base import Base
-from app.routes import auth, admin, cvs, chat, system
+from app.routes import auth, admin, cvs, chat, system, tiers
 import uvicorn
 import os
+
+# Import all models to ensure they are registered before create_all
+import app.models.user
+import app.models.cv
+import app.models.audit
+import app.models.tier
+import app.models.chat
 
 # Create tables
 Base.metadata.create_all(bind=engine)
@@ -25,6 +32,7 @@ app.add_middleware(
 
 app.include_router(auth.router)
 app.include_router(admin.router)
+app.include_router(tiers.router)
 app.include_router(cvs.router)
 app.include_router(chat.router)
 app.include_router(system.router)

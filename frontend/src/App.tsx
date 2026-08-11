@@ -8,6 +8,7 @@ import CVLibrary from './pages/CVLibrary';
 import AIChat from './pages/AIChat';
 import Users from './pages/Users';
 import SystemStatus from './pages/SystemStatus';
+import Tiers from './pages/Tiers';
 
 function App() {
   const { loading } = useContext(AuthContext);
@@ -28,6 +29,7 @@ function App() {
         <Route path="cvs" element={<CVLibrary />} />
         <Route path="chat" element={<AIChat />} />
         <Route path="users" element={<Users />} />
+        <Route path="tiers" element={<Tiers />} />
         <Route path="system" element={<SystemStatus />} />
       </Route>
       <Route path="*" element={<Navigate to="/" />} />

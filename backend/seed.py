@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 from app.database.connection import engine, SessionLocal
 from app.database.base import Base
 from app.models.user import User
+from app.models.tier import Tier
 from app.auth.password import get_password_hash
 
 def seed_db():
@@ -13,6 +14,17 @@ def seed_db():
         print("Database already seeded.")
         db.close()
         return
+
+    # Seed tiers
+    tiers = [
+        {"name": "TIER_1", "level": 1},
+        {"name": "TIER_2", "level": 2},
+        {"name": "TIER_3", "level": 3},
+    ]
+    for t in tiers:
+        if not db.query(Tier).filter(Tier.name == t["name"]).first():
+            db.add(Tier(name=t["name"], level=t["level"]))
+    db.commit()
 
     users = [
         {"name": "Admin User", "email": "admin@example.com", "password": "password123", "role": "ADMIN"},

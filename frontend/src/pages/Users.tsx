@@ -1,18 +1,32 @@
 import { useState, useEffect } from 'react';
 import api from '../services/api';
 import type { User } from '../types';
-import { ShieldAlert, Shield, ShieldCheck, MoreVertical, Plus, X } from 'lucide-react';
+import { ShieldAlert, Shield, ShieldCheck, Plus, X, Trash2 } from 'lucide-react';
+
+interface Tier {
+  id: number;
+  name: string;
+  level: number;
+}
 
 const Users = () => {
   const [users, setUsers] = useState<User[]>([]);
+  const [tiers, setTiers] = useState<Tier[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAddOpen, setIsAddOpen] = useState(false);
-  const [newUser, setNewUser] = useState({ name: '', email: '', initial_password: '', role: 'TIER_3' });
+  const [newUser, setNewUser] = useState({ name: '', email: '', initial_password: '', role: 'ADMIN' });
 
-  const fetchUsers = async () => {
+  const fetchData = async () => {
     try {
-      const res = await api.get('/admin/users');
-      setUsers(res.data);
+      const [usersRes, tiersRes] = await Promise.all([
+        api.get('/admin/users'),
+        api.get('/admin/tiers')
+      ]);
+      setUsers(usersRes.data);
+      setTiers(tiersRes.data);
+      if (tiersRes.data.length > 0) {
+        setNewUser(prev => ({ ...prev, role: tiersRes.data[0].name }));
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -21,14 +35,14 @@ const Users = () => {
   };
 
   useEffect(() => {
-    fetchUsers();
+    fetchData();
   }, []);
 
   const handleTierChange = async (userId: number, newTier: string) => {
     if (!confirm(`Are you sure you want to change this user's tier to ${newTier}?`)) return;
     try {
       await api.patch(`/admin/users/${userId}/tier`, { tier: newTier });
-      fetchUsers();
+      fetchData();
     } catch (err) {
       alert('Failed to update tier');
     }
@@ -39,10 +53,20 @@ const Users = () => {
     try {
       await api.post('/admin/users', newUser);
       setIsAddOpen(false);
-      setNewUser({ name: '', email: '', initial_password: '', role: 'TIER_3' });
-      fetchUsers();
+      setNewUser({ name: '', email: '', initial_password: '', role: tiers.length > 0 ? tiers[0].name : 'ADMIN' });
+      fetchData();
     } catch (err: any) {
       alert(err.response?.data?.detail || 'Failed to create user');
+    }
+  };
+
+  const handleDeleteUser = async (userId: number) => {
+    if (!confirm(`Are you sure you want to delete this user?`)) return;
+    try {
+      await api.delete(`/admin/users/${userId}`);
+      fetchData();
+    } catch (err: any) {
+      alert(err.response?.data?.detail || 'Failed to delete user');
     }
   };
 
@@ -87,10 +111,10 @@ const Users = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Role / Tier</label>
                 <select value={newUser.role} onChange={e => setNewUser({...newUser, role: e.target.value})} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
-                  <option value="TIER_3">TIER_3 (Lowest)</option>
-                  <option value="TIER_2">TIER_2</option>
-                  <option value="TIER_1">TIER_1 (Highest)</option>
                   <option value="ADMIN">ADMIN</option>
+                  {tiers.map(tier => (
+                    <option key={tier.id} value={tier.name}>{tier.name} (Level {tier.level})</option>
+                  ))}
                 </select>
               </div>
               <div className="pt-2 flex justify-end gap-2">
@@ -127,10 +151,7 @@ const Users = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-2">
-                        {user.role === 'ADMIN' && <ShieldAlert className="w-4 h-4 text-red-500" />}
-                        {user.role === 'TIER_1' && <ShieldCheck className="w-4 h-4 text-green-500" />}
-                        {user.role === 'TIER_2' && <Shield className="w-4 h-4 text-yellow-500" />}
-                        {user.role === 'TIER_3' && <Shield className="w-4 h-4 text-gray-400" />}
+                        {user.role === 'ADMIN' ? <ShieldAlert className="w-4 h-4 text-red-500" /> : <ShieldCheck className="w-4 h-4 text-green-500" />}
                         <span className="text-sm font-semibold">{user.role}</span>
                       </div>
                     </td>
@@ -140,13 +161,23 @@ const Users = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      {user.role !== 'ADMIN' && (
-                        <div className="flex justify-end gap-2">
-                          <button onClick={() => handleTierChange(user.id, 'TIER_1')} className="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded">T1</button>
-                          <button onClick={() => handleTierChange(user.id, 'TIER_2')} className="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded">T2</button>
-                          <button onClick={() => handleTierChange(user.id, 'TIER_3')} className="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded">T3</button>
-                        </div>
-                      )}
+                      <div className="flex justify-end items-center gap-4">
+                        {user.role !== 'ADMIN' && (
+                          <select 
+                            value={user.role} 
+                            onChange={(e) => handleTierChange(user.id, e.target.value)}
+                            className="text-xs bg-gray-50 border rounded px-2 py-1 outline-none"
+                          >
+                            <option value={user.role} disabled>Change Tier</option>
+                            {tiers.map(t => (
+                              <option key={t.id} value={t.name}>{t.name}</option>
+                            ))}
+                          </select>
+                        )}
+                        <button onClick={() => handleDeleteUser(user.id)} className="text-red-500 hover:text-red-700 transition" title="Delete User">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))

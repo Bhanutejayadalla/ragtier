@@ -3,8 +3,10 @@ from sqlalchemy.orm import Session
 from app.database.connection import get_db
 from app.auth.dependencies import get_current_user
 from app.models.user import User
-from app.schemas.chat import ChatRequest, ChatResponse, Source
+from app.schemas.chat import ChatRequest, ChatResponse, Source, ChatSessionResponse
 from app.permissions.service import get_allowed_tiers
+from app.models.chat import ChatSession, ChatMessage
+from typing import List
 from app.rag.embeddings import get_chroma_collection
 from app.services.audit_service import log_action
 from app.config import settings
@@ -23,7 +25,7 @@ Do not invent information. Do not mention that you are an AI or using RAG.
 
 @router.post("", response_model=ChatResponse)
 async def chat(request: ChatRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    allowed_tiers = get_allowed_tiers(current_user.role)
+    allowed_tiers = get_allowed_tiers(current_user.role, db)
     if not allowed_tiers:
         raise HTTPException(status_code=403, detail="No tiers accessible")
         
@@ -77,6 +79,39 @@ async def chat(request: ChatRequest, current_user: User = Depends(get_current_us
     except Exception as e:
         answer = f"AI Error: {str(e)}"
         
+    session_id = request.session_id
+    if request.save_history:
+        if not session_id:
+            new_session = ChatSession(user_id=current_user.id, title=request.query[:50] + "...")
+            db.add(new_session)
+            db.commit()
+            db.refresh(new_session)
+            session_id = new_session.id
+            
+        user_msg = ChatMessage(session_id=session_id, role="user", content=request.query)
+        db.add(user_msg)
+        
+        sources_json = [{"cv_id": s.cv_id, "filename": s.filename} for s in sources]
+        ai_msg = ChatMessage(session_id=session_id, role="ai", content=answer, sources=sources_json)
+        db.add(ai_msg)
+        
+        db.commit()
+        
     log_action(db, "CHAT_QUERY", current_user.id, "QUERY", None, {"query": request.query, "num_sources": len(sources)})
         
-    return ChatResponse(answer=answer, sources=sources)
+    return ChatResponse(answer=answer, sources=sources, session_id=session_id)
+
+@router.get("/sessions", response_model=List[ChatSessionResponse])
+def get_chat_sessions(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    sessions = db.query(ChatSession).filter(ChatSession.user_id == current_user.id).order_by(ChatSession.created_at.desc()).all()
+    return sessions
+
+@router.get("/sessions/{session_id}", response_model=ChatSessionResponse)
+def get_chat_session(session_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    session = db.query(ChatSession).filter(ChatSession.id == session_id, ChatSession.user_id == current_user.id).first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+        
+    messages = db.query(ChatMessage).filter(ChatMessage.session_id == session.id).order_by(ChatMessage.created_at.asc()).all()
+    session.messages = messages
+    return session
