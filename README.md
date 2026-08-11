@@ -13,7 +13,7 @@ In a standard RAG (Retrieval-Augmented Generation) pipeline, an LLM queries a ve
 
 **TierRAG** intercepts the vector search *before* it reaches the LLM. It verifies the user's tier, strictly filters the ChromaDB vector search using metadata constraints, and only feeds authorized text chunks to the LLM (Ollama). 
 
-**Result**: Zero hallucination of restricted data. 100% secure semantic search.
+**Result**:  100% secure semantic search.
 
 ---
 
