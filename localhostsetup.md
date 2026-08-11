@@ -70,7 +70,7 @@ Open a terminal in `d:\TierRAG\backend` and run:
 ```
 *(Make sure your virtual environment is activated before running this command).*
 
-This will read your `DATABASE_URL` from the `.env` file, connect to MySQL, create the tables (`users`, `cvs`, `audit_logs`), and create the default login accounts:
+This will read your `DATABASE_URL` from the `.env` file, connect to MySQL, create the tables (`users`, `tiers`, `cvs`, `audit_logs`, `chat_sessions`, `chat_messages`), and create the default dynamic tiers (`TIER_1`, `TIER_2`, `TIER_3`) along with the default login accounts:
 - `admin@example.com` (Password: `password123`)
 - `tier1@example.com` (Password: `password123`)
 - `tier2@example.com` (Password: `password123`)

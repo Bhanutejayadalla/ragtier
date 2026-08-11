@@ -7,7 +7,7 @@ class CV(Base):
     id = Column(Integer, primary_key=True, index=True)
     filename = Column(String(255), nullable=False, unique=True)
     original_filename = Column(String(255), nullable=False)
-    uploaded_by = Column(Integer, ForeignKey("users.id"), nullable=False)
+    uploaded_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     tier = Column(String(50), nullable=False) # TIER_1, TIER_2, TIER_3
     file_path = Column(String(512), nullable=False)
     file_size = Column(Integer, nullable=False)

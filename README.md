@@ -18,11 +18,13 @@ In a standard RAG (Retrieval-Augmented Generation) pipeline, an LLM queries a ve
 ---
 
 ## ✨ Key Features
-- **Strict Role-Based Access Control**: Hierarchical tiers (`ADMIN`, `TIER_1`, `TIER_2`, `TIER_3`). Users can only access CVs at or below their tier.
+- **Dynamic Role-Based Access Control**: Admins can create custom, hierarchical access tiers mapping to numeric hierarchy levels (e.g., `TIER_1`, `EXEC_TIER`). Users can only access CVs at or below their assigned tier's privilege level.
+- **User & Tier Management**: Full admin capabilities to create, edit, and delete users and tiers, with robust protections against deleting tiers that are actively in use.
 - **Permission-Aware RAG**: Chat with candidate CVs safely without exposing unauthorized information.
+- **Chat History Management**: Users can optionally save their chat history, enabling them to review past sessions and source attributions.
 - **Automated Ingestion Pipeline**: Upload a PDF, and the system automatically extracts text, chunks it, embeds it, and securely tags it in the vector DB.
 - **Source Attribution**: The AI doesn't just give answers; it provides the exact CV filenames used as sources to ensure verifiability.
-- **Immutable Audit Logging**: Every upload, tier change, and chat query is recorded for compliance.
+- **Immutable Audit Logging**: Every upload, tier change, deletion, and chat query is recorded for compliance.
 - **Modern UI**: A sleek, responsive dashboard built with React and Tailwind CSS.
 
 ---
@@ -31,7 +33,7 @@ In a standard RAG (Retrieval-Augmented Generation) pipeline, an LLM queries a ve
 
 - **Frontend**: React 19, TypeScript, Vite, Tailwind CSS, Lucide Icons
 - **Backend**: Python, FastAPI, SQLAlchemy
-- **Relational Database**: MySQL (Stores users, CV metadata, and audit logs)
+- **Relational Database**: MySQL (Stores users, dynamic tiers, CV metadata, chat history, and audit logs)
 - **Vector Database**: ChromaDB (Stores chunked CV text, embeddings, and security metadata)
 - **AI Engine**: Ollama (Running locally for maximum privacy, e.g., Llama 3)
 - **Document Processing**: PyMuPDF (`fitz`) for PDF text extraction
@@ -62,7 +64,7 @@ python -m venv venv
 
 pip install -r requirements.txt
 
-# Seed the database with default users and roles
+# Seed the database with default dynamic tiers and roles
 python seed.py  
 
 # Run the server
@@ -82,7 +84,7 @@ npm run dev
 
 ## 🔐 Default Credentials
 Use these pre-configured accounts to test the tier-restricted AI capabilities:
-- **Admin Account**: `admin@example.com` / `password123` (Full access)
+- **Admin Account**: `admin@example.com` / `password123` (Full access, can manage dynamic tiers and users)
 - **Tier 1 Account**: `tier1@example.com` / `password123` (High access)
 - **Tier 2 Account**: `tier2@example.com` / `password123` (Medium access)
 - **Tier 3 Account**: `tier3@example.com` / `password123` (Base access)
@@ -92,10 +94,10 @@ Use these pre-configured accounts to test the tier-restricted AI capabilities:
 ---
 
 ## 🛡️ Security Mechanisms Deep Dive
-- **Dynamic Tier Calculation**: `can_access_tier` utility ensures users only see authorized CVs on the frontend.
-- **Vector Pre-Filtering**: The RAG chunk retrieval utilizes ChromaDB's `$in` metadata filter with the user's `allowed_tiers`. Unauthorized chunks never physically enter the LLM's context window.
+- **Dynamic Tier Calculation**: The backend dynamically fetches a user's tier level and calculates their `allowed_tiers` list to ensure they only see authorized CVs.
+- **Vector Pre-Filtering**: The RAG chunk retrieval utilizes ChromaDB's `$in` metadata filter against the user's computed `allowed_tiers`. Unauthorized chunks never physically enter the LLM's context window.
 - **Path Traversal Protection**: Uploaded filenames are sanitized and stored securely as UUIDs on disk.
-- **Accountability**: Audit logs track sensitive actions (promotions, uploads, AI queries) natively in MySQL.
+- **Accountability**: Audit logs track sensitive actions (promotions, tier management, uploads, AI queries) natively in MySQL.
 
 ---
 

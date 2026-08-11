@@ -2,12 +2,18 @@
 
 ## Overview
 The application utilizes a dual-database architecture, ensuring that structured metadata is managed efficiently while unstructured text data is optimized for semantic search and Retrieval-Augmented Generation (RAG).
-1. **Relational Database (MySQL):** Manages structured data like users, uploaded CV metadata (including their access tiers), and audit logs.
+1. **Relational Database (MySQL):** Manages structured data like users, dynamic tiers, uploaded CV metadata, chat history, and audit logs.
 2. **Vector Database (ChromaDB):** Stores document embeddings for the RAG engine to enable semantic search across CVs.
 
 ---
 
 ## 1. Relational Schema (MySQL)
+
+### `tiers` Table
+Stores the dynamic access tiers managed by the administrators.
+- `id` (Integer, Primary Key, Indexed)
+- `name` (String 50, Unique, Indexed): e.g., `TIER_1`, `EXEC_TIER`
+- `level` (Integer): Defines the hierarchy level (lower number = higher privilege).
 
 ### `users` Table
 Stores user accounts and their roles.
@@ -15,7 +21,7 @@ Stores user accounts and their roles.
 - `name` (String 255)
 - `email` (String 255, Unique, Indexed)
 - `password_hash` (String 255)
-- `role` (String 50): Defines access level (`ADMIN`, `TIER_1`, `TIER_2`, `TIER_3`)
+- `role` (String 50): Foreign key representation of the access level (maps to `tiers.name`, or `ADMIN`)
 - `is_active` (Boolean, Default True)
 - `created_by` (Integer, Nullable): References the admin user who created this account
 - `created_at` (DateTime, Default Now)
@@ -26,19 +32,34 @@ Tracks uploaded CV documents and their tier access level. **This table acts as t
 - `id` (Integer, Primary Key, Indexed)
 - `filename` (String 255, Unique): UUID-based internal filename
 - `original_filename` (String 255): Original uploaded file name
-- `uploaded_by` (Integer, Foreign Key to `users.id`)
-- `tier` (String 50): Access level assigned at the time of upload (e.g., `TIER_1`, `TIER_2`, `TIER_3`)
-- `file_path` (String 512): Path to the saved PDF file (physically organized into folders by tier, e.g., `uploads/tier_1/`)
+- `uploaded_by` (Integer, Foreign Key to `users.id`, Nullable, `ON DELETE SET NULL`): If a user is deleted, their CVs remain safely stored in the system.
+- `tier` (String 50): Access level assigned at the time of upload (maps to `tiers.name`)
+- `file_path` (String 512): Path to the saved PDF file
 - `file_size` (Integer)
 - `created_at` (DateTime, Default Now)
 - `updated_at` (DateTime, On Update Now)
+
+### `chat_sessions` & `chat_messages` Tables
+Stores optional chat history for users.
+- **`chat_sessions`:** 
+  - `id` (PK)
+  - `user_id` (FK to `users.id`, `ON DELETE CASCADE`): Deleting a user permanently clears their private chat history.
+  - `title` (String 255)
+  - `created_at` (DateTime)
+- **`chat_messages`:**
+  - `id` (PK)
+  - `session_id` (FK to `chat_sessions.id`)
+  - `role` (String 50): `user` or `ai`
+  - `content` (String): The query or response
+  - `sources` (JSON, Nullable): Retains source attributions for AI responses
+  - `created_at` (DateTime)
 
 ### `audit_logs` Table
 Maintains an immutable record of system actions for accountability and security.
 - `id` (Integer, Primary Key, Indexed)
 - `user_id` (Integer, Foreign Key to `users.id`, Nullable)
-- `action` (String 100): e.g., USER_CREATED, CV_UPLOADED, CHAT_QUERY
-- `target_type` (String 50, Nullable): e.g., USER, CV, QUERY
+- `action` (String 100): e.g., USER_CREATED, TIER_DELETED, CV_UPLOADED, CHAT_QUERY
+- `target_type` (String 50, Nullable): e.g., USER, TIER, CV, QUERY
 - `target_id` (String 100, Nullable)
 - `metadata_info` (JSON, Nullable): Additional contextual data about the action
 - `created_at` (DateTime, Default Now)
@@ -70,7 +91,7 @@ When a CV is uploaded to the system, it is divided and stored across three disti
 3. **ChromaDB Ingestion (Vector Storage):** 
    - The PDF is read and split into overlapping text chunks (e.g., 500 characters each).
    - **Crucial Step:** As these chunks are inserted into ChromaDB, the `tier` assigned in MySQL is duplicated into the metadata of *every single chunk*. 
-   - This means if a 10-page CV generates 50 chunks, all 50 chunks in the vector database are permanently stamped with `tier: TIER_2`.
+   - This means if a 10-page CV generates 50 chunks, all 50 chunks in the vector database are permanently stamped with `tier: <dynamic_tier_name>`.
 
 ---
 
@@ -81,10 +102,10 @@ The Retrieval-Augmented Generation (RAG) system enforces security strictly at th
 Here is the exact flow when a user asks a question in the chat:
 
 1. **Identity & Permission Resolution:**
-   The backend identifies the user making the query and checks their `role` (e.g., `TIER_2`). It then calculates their `allowed_tiers` (e.g., `['TIER_2', 'TIER_3']`).
+   The backend identifies the user making the query and queries the `tiers` database to determine their exact hierarchy level. It then calculates their `allowed_tiers` list by pulling all tiers with a level greater than or equal to their own.
 
 2. **Pre-Filtered Vector Search:**
-   The user's query is converted into an embedding and sent to ChromaDB. However, instead of searching the entire database, the backend applies a strict **where clause** based on the user's permissions:
+   The user's query is converted into an embedding and sent to ChromaDB. However, instead of searching the entire database, the backend applies a strict **where clause** based on the user's dynamically computed permissions:
    ```python
    results = collection.query(
        query_texts=["How many years of Python experience does John have?"],

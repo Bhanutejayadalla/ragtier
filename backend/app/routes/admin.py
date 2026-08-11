@@ -87,7 +87,7 @@ def delete_user(user_id: int, current_user: User = Depends(require_admin), db: S
         db.commit()
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=400, detail="Cannot delete user. Ensure all related records (like CVs) are deleted first.")
+        raise HTTPException(status_code=400, detail="Cannot delete user due to a database constraint.")
         
     log_action(db, "USER_DELETED", current_user.id, "USER", str(user_id), {"email": user.email})
     return None
