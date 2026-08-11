@@ -54,6 +54,15 @@ Stores optional chat history for users.
   - `sources` (JSON, Nullable): Retains source attributions for AI responses
   - `created_at` (DateTime)
 
+### `llm_settings`
+Stores the global AI provider configuration (managed by Admins).
+- `id` (Integer, Primary Key)
+- `provider` (String 50): The active AI provider (e.g., 'ollama', 'openai', 'gemini').
+- `ollama_model` (String 100): The selected Ollama model.
+- `openai_model` (String 100): The selected OpenAI model.
+- `gemini_model` (String 100): The selected Gemini model.
+*(Note: API keys are securely stored in the `.env` file, not in the database).*
+
 ### `audit_logs` Table
 Maintains an immutable record of system actions for accountability and security.
 - `id` (Integer, Primary Key, Indexed)

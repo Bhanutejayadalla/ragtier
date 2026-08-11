@@ -11,6 +11,8 @@ Users upload PDF versions of their CVs. The system validates the file type and s
 - **Validation:** Enforces `.pdf` extension and checks file size against `settings.MAX_UPLOAD_SIZE_MB`.
 - **Frontend UI:** `frontend/src/pages/CVLibrary.tsx` (Handles file selection and API call).
 
+
+
 ### 3.2 Auto-Tiering & Dynamic Tiers
 The system uses dynamic, admin-managed tiers rather than hardcoded roles. Each uploaded CV is associated with a specific access tier (e.g., `TIER_1`, `TIER_2`, or custom ones like `EXEC_TIER`).
 - **Standard Users:** If a user uploads a CV, it is automatically locked to their assigned tier. The system explicitly ignores or overrides any frontend tier parameters to prevent privilege escalation.
@@ -58,3 +60,12 @@ When the LLM answers, the user needs to know *which* CVs the answer came from. S
 - **History Save:** If `save_history` is enabled, the backend stores the query and the LLM's response (along with JSON-encoded sources) into `ChatSession` and `ChatMessage` database tables.
 - **Response Formatting:** Returns a `ChatResponse` schema that includes the `answer` string, a `sources` array, and the `session_id`.
 - **Frontend UI:** `frontend/src/pages/AIChat.tsx` renders these sources as clickable badges below the chat bubbles and provides a sidebar to view past sessions.
+
+### 4.4 Multi-Provider LLM Integration & Dynamic Routing
+TierRAG acts as a dynamic orchestration layer for your Generative AI. While it defaults to fully private local execution via Ollama, it provides Admins the flexibility to instantly pivot to commercial models as needed.
+- **Admin UI Configuration:** Admins can access a dedicated "AI Settings" panel to switch the active AI provider on the fly. Supported providers include **Ollama**, **OpenAI**, and **Gemini**.
+- **Secure Key Storage:** To prevent sensitive credential leaks, API keys for commercial providers are never stored in the database. Instead, they must be securely provisioned via the backend `.env` file (`OPENAI_API_KEY` and `GEMINI_API_KEY`).
+- **Dynamic Context Injection:** Regardless of the chosen provider, the same strict pre-filtering rules apply. The backend injects the permitted ChromaDB text chunks into the prompt alongside a system directive that forces the LLM to anchor its response strictly to the provided text context.
+**Where in code:**
+- **Settings Router:** `backend/app/routes/settings.py` handles the configuration changes.
+- **Dynamic AI Call:** `backend/app/routes/chat.py` reads the active config from the database and routes the formatted HTTP request to either the local Ollama instance or the external cloud API.

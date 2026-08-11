@@ -32,6 +32,13 @@ The format is:
   - Example: If your root password is `MySecret123`, change the line to:
     `DATABASE_URL=mysql+pymysql://root:MySecret123@localhost:3306/tierrag`
 
+### (Optional) Cloud AI API Keys
+If you want to use OpenAI or Gemini instead of local Ollama, you must add your API keys to this `.env` file as well:
+```env
+OPENAI_API_KEY="sk-..."
+GEMINI_API_KEY="..."
+```
+
 ## 3. Create the Database
 
 Before running the application, the `tierrag` database must exist.

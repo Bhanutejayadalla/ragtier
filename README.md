@@ -19,6 +19,7 @@ In a standard RAG (Retrieval-Augmented Generation) pipeline, an LLM queries a ve
 
 ## ✨ Key Features
 - **Dynamic Role-Based Access Control**: Admins can create custom, hierarchical access tiers mapping to numeric hierarchy levels (e.g., `TIER_1`, `EXEC_TIER`). Users can only access CVs at or below their assigned tier's privilege level.
+- **Multi-Provider AI Brain**: Seamlessly switch between local open-source models (Ollama) and cloud APIs (OpenAI, Gemini) directly from the Admin UI.
 - **User & Tier Management**: Full admin capabilities to create, edit, and delete users and tiers, with robust protections against deleting tiers that are actively in use.
 - **Permission-Aware RAG**: Chat with candidate CVs safely without exposing unauthorized information.
 - **Chat History Management**: Users can optionally save their chat history, enabling them to review past sessions and source attributions.
@@ -48,9 +49,14 @@ In a standard RAG (Retrieval-Augmented Generation) pipeline, an LLM queries a ve
 - **MySQL Server** running locally.
 - **Ollama** installed and running locally with a model pulled (e.g., `ollama run llama3.1`).
 
-### 2. Database Setup
+### 2. Configuration (.env)
 1. Create a MySQL database named `tierrag` (You can run `python backend/create_db.py` to automate this).
-2. Ensure your `backend/app/config.py` or `.env` reflects your local MySQL credentials.
+2. Ensure your `backend/app/config.py` or `backend/.env` reflects your local MySQL credentials.
+3. If you plan to use OpenAI or Gemini, add your API keys to the `.env` file:
+   ```env
+   OPENAI_API_KEY="sk-..."
+   GEMINI_API_KEY="..."
+   ```
 
 ### 3. Backend Setup
 ```bash

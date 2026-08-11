@@ -15,6 +15,7 @@ TierRAG is a secure, role-based, Retrieval-Augmented Generation (RAG) system for
 - **User Creation & Deletion:** Admins can create new users, assign them to dynamic tiers, and delete users from the system entirely. When a user is deleted, their uploaded CVs safely remain in the system (orphaned), while their personal chat history is permanently removed.
 - **User Listing:** View all users in the system and effortlessly change their tier via dropdown menus.
 - **Status Toggling:** Admins can activate or deactivate user accounts to revoke access temporarily.
+- **AI Settings Configuration:** Admins can dynamically configure the AI provider used for the RAG assistant. Options include local Ollama models (with models synced dynamically from the local machine) as well as commercial cloud providers (OpenAI, Gemini).
 
 ### 3. CV Management & Tiered Access
 - **PDF Uploads:** Users can upload PDF CVs (subject to a file size limit).

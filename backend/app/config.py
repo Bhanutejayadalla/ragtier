@@ -9,6 +9,9 @@ class Settings(BaseSettings):
     OLLAMA_URL: str = "http://127.0.0.1:11434"
     OLLAMA_MODEL: str = "qwen3:8b"
     
+    OPENAI_API_KEY: str = ""
+    GEMINI_API_KEY: str = ""
+    
     UPLOAD_DIR: str = "./uploads"
     CHROMA_DIR: str = "./chroma_data"
     

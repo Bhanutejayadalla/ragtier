@@ -58,24 +58,68 @@ async def chat(request: ChatRequest, current_user: User = Depends(get_current_us
             sources.append(Source(cv_id=meta["cv_id"], filename=meta["filename"]))
             seen_cv_ids.add(meta["cv_id"])
             
-    # Call Ollama
+    from app.models.settings import LLMSettings
+    llm_settings = db.query(LLMSettings).first()
+    if not llm_settings:
+        llm_settings = LLMSettings()
+        
     prompt = f"Context:\n{context_str}\n\nUser Question: {request.query}"
-    
-    payload = {
-        "model": settings.OLLAMA_MODEL,
-        "messages": [
-            {"role": "system", "content": RAG_SYSTEM_PROMPT},
-            {"role": "user", "content": prompt}
-        ],
-        "stream": False
-    }
+    answer = "Error generating response."
     
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
-            response = await client.post(f"{settings.OLLAMA_URL}/api/chat", json=payload)
-            response.raise_for_status()
-            data = response.json()
-            answer = data.get("message", {}).get("content", "Error generating response.")
+            if llm_settings.provider == "openai":
+                if not settings.OPENAI_API_KEY:
+                    raise Exception("OpenAI API key not configured in .env")
+                payload = {
+                    "model": llm_settings.openai_model,
+                    "messages": [
+                        {"role": "system", "content": RAG_SYSTEM_PROMPT},
+                        {"role": "user", "content": prompt}
+                    ]
+                }
+                headers = {"Authorization": f"Bearer {settings.OPENAI_API_KEY}"}
+                response = await client.post("https://api.openai.com/v1/chat/completions", json=payload, headers=headers)
+                response.raise_for_status()
+                data = response.json()
+                answer = data.get("choices", [{}])[0].get("message", {}).get("content", "Error generating response.")
+                
+            elif llm_settings.provider == "gemini":
+                if not settings.GEMINI_API_KEY:
+                    raise Exception("Gemini API key not configured in .env")
+                payload = {
+                    "contents": [
+                        {
+                            "role": "user",
+                            "parts": [{"text": RAG_SYSTEM_PROMPT + "\n\n" + prompt}]
+                        }
+                    ]
+                }
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/{llm_settings.gemini_model}:generateContent?key={settings.GEMINI_API_KEY}"
+                headers = {"Content-Type": "application/json"}
+                response = await client.post(url, json=payload, headers=headers)
+                response.raise_for_status()
+                data = response.json()
+                candidates = data.get("candidates", [])
+                if candidates:
+                    answer = candidates[0].get("content", {}).get("parts", [{}])[0].get("text", "Error generating response.")
+                else:
+                    answer = "No response from Gemini."
+                    
+            else: # default to ollama
+                payload = {
+                    "model": llm_settings.ollama_model,
+                    "messages": [
+                        {"role": "system", "content": RAG_SYSTEM_PROMPT},
+                        {"role": "user", "content": prompt}
+                    ],
+                    "stream": False
+                }
+                response = await client.post(f"{settings.OLLAMA_URL}/api/chat", json=payload)
+                response.raise_for_status()
+                data = response.json()
+                answer = data.get("message", {}).get("content", "Error generating response.")
+                
     except Exception as e:
         answer = f"AI Error: {str(e)}"
         

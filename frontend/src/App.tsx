@@ -9,6 +9,7 @@ import AIChat from './pages/AIChat';
 import Users from './pages/Users';
 import SystemStatus from './pages/SystemStatus';
 import Tiers from './pages/Tiers';
+import AISettings from './pages/AISettings';
 
 function App() {
   const { loading } = useContext(AuthContext);
@@ -31,6 +32,7 @@ function App() {
         <Route path="users" element={<Users />} />
         <Route path="tiers" element={<Tiers />} />
         <Route path="system" element={<SystemStatus />} />
+        <Route path="settings" element={<AISettings />} />
       </Route>
       <Route path="*" element={<Navigate to="/" />} />
     </Routes>
